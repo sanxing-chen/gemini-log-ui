@@ -5,7 +5,6 @@
       <!-- Sidebar / TOC -->
       <div class="w-1/3 min-w-[300px] flex flex-col bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div class="p-4 border-b border-gray-200 dark:border-gray-800">
-           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">History</h2>
            <UInput
               v-model="search"
               icon="i-heroicons-magnifying-glass-20-solid"
@@ -111,10 +110,11 @@
              <div v-else class="divide-y divide-gray-100 dark:divide-gray-800">
                 
                 <!-- Date Header -->
-                <div class="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 p-4">
+                <div class="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 p-4 flex items-center justify-between">
                     <h1 class="text-xl font-bold text-gray-900 dark:text-white">
                         {{ activeDateLabel }}
                     </h1>
+                    <UColorModeSwitch />
                 </div>
 
                  <div v-for="log in activeDayLogs" :key="log.id" :id="log.id" class="p-8 pb-16 min-h-[50vh] flex flex-col gap-8" data-log-item>
