@@ -20,8 +20,20 @@
             <div v-if="status === 'pending'" class="flex justify-center py-4">
                 <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />
             </div>
-             <div v-else-if="status === 'error'" class="text-center py-4 text-red-500">
-                <p>Failed to load.</p>
+             <div v-else-if="status === 'error' && !uploadedLogs" class="flex flex-col items-center justify-center p-6 space-y-4">
+                <div class="text-center">
+                    <UIcon name="i-heroicons-exclamation-circle" class="w-8 h-8 text-red-500 mb-2 mx-auto" />
+                    <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Data source missing</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">Upload MyActivity.json to view your history</p>
+                </div>
+                <div class="w-full">
+                     <UFileUpload 
+                        v-model="uploadFile" 
+                        @change="handleFileUpload" 
+                        accept=".json"
+                        icon="i-heroicons-arrow-up-tray"
+                     />
+                </div>
             </div>
             
             <nav v-else class="space-y-1">
@@ -30,6 +42,7 @@
                     <UCalendar 
                         v-model="calendarDate" 
                         :is-date-unavailable="isDateDisabled" 
+                        variant="subtle"
                         class="p-2"
                     />
                 </div>
@@ -199,10 +212,53 @@ const { data: rawLogs, status, error } = await useFetch<LogItem[]>('/MyActivity.
   lazy: true
 })
 
+// State
+const search = ref('')
+const activeLogId = ref<string | null>(null)
+const selectedDateKey = ref<string | null>(null)
+const mainScroll = ref<HTMLElement | null>(null)
+const uploadFile = ref<File | null>(null)
+const uploadedLogs = ref<LogItem[] | null>(null)
+let observer: IntersectionObserver | null = null
+
+// Expansion State (managed manually to allow independent toggling)
+const expandedYears = ref<Set<string>>(new Set())
+const expandedMonths = ref<Set<string>>(new Set())
+
+const handleFileUpload = (e: any) => {
+    // Determine the file to read
+    let file: File | null = null
+    if (uploadFile.value) {
+        file = uploadFile.value
+    } else if (e?.target?.files?.[0]) {
+        file = e.target.files[0]
+    }
+    
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+        try {
+            const content = event.target?.result as string
+            const parsed = JSON.parse(content)
+            if (Array.isArray(parsed)) {
+                uploadedLogs.value = parsed
+            } else {
+                alert('Invalid JSON format: Expected an array')
+            }
+        } catch (err) {
+            console.error('Error parsing JSON:', err)
+            alert('Error parsing JSON file')
+        }
+    }
+    reader.readAsText(file)
+}
+
 // Processed logs
 const processedLogs = computed(() => {
-  if (!rawLogs.value) return []
-  return rawLogs.value
+  const source = uploadedLogs.value || rawLogs.value
+  if (!source) return []
+  return source
     .map((item, index) => {
         const dateObj = item.time ? new Date(item.time) : new Date(0);
         const yyyy = dateObj.getFullYear();
@@ -227,17 +283,6 @@ const processedLogs = computed(() => {
     })
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
 })
-
-// State
-const search = ref('')
-const activeLogId = ref<string | null>(null)
-const selectedDateKey = ref<string | null>(null)
-const mainScroll = ref<HTMLElement | null>(null)
-let observer: IntersectionObserver | null = null
-
-// Expansion State (managed manually to allow independent toggling)
-const expandedYears = ref<Set<string>>(new Set())
-const expandedMonths = ref<Set<string>>(new Set())
 
 // Watch for data load to initialize
 watch(processedLogs, (logs) => {
