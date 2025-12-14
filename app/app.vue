@@ -11,8 +11,8 @@ useHead({
   }
 })
 
-const title = 'Nuxt Starter Template'
-const description = 'A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours.'
+const title = 'Gemini Log UI'
+const description = 'A beautiful interface for exploring your Google Gemini activity logs.'
 
 useSeoMeta({
   title,
@@ -33,7 +33,6 @@ useSeoMeta({
           <AppLogo class="w-auto h-6 shrink-0" />
         </NuxtLink>
 
-        <TemplateMenu />
       </template>
 
       <template #right>
@@ -65,7 +64,7 @@ useSeoMeta({
 
       <template #right>
         <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
+          to="https://github.com/sanxing-chen/gemini-log-ui"
           target="_blank"
           icon="i-simple-icons-github"
           aria-label="GitHub"
