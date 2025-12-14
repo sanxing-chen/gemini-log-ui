@@ -14,34 +14,8 @@
               placeholder="Filter..."
              class="w-full"
           />
-          <div class="flex gap-1 mt-2">
-            <UButton 
-              size="xs" 
-              :variant="viewMode === 'all' ? 'solid' : 'ghost'" 
-              color="neutral"
-              class="flex-1 justify-center"
-              @click="viewMode = 'all'"
-            >
-              All
-            </UButton>
-            <UButton 
-              size="xs" 
-              :variant="viewMode === 'work' ? 'solid' : 'ghost'" 
-              color="neutral"
-              class="flex-1 justify-center"
-              @click="viewMode = 'work'"
-            >
-              Work
-            </UButton>
-            <UButton 
-              size="xs" 
-              :variant="viewMode === 'life' ? 'solid' : 'ghost'" 
-              color="neutral"
-              class="flex-1 justify-center" 
-              @click="viewMode = 'life'"
-            >
-              Life
-            </UButton>
+          <div class="mt-2">
+            <UTabs :items="tabItems" v-model="viewMode" class="w-full" />
           </div>
        </div>
         
@@ -244,6 +218,14 @@ const mainScroll = ref<HTMLElement | null>(null)
 const uploadFile = ref<File | null>(null)
 const uploadedLogs = ref<LogItem[] | null>(null)
 const viewMode = ref<'all' | 'work' | 'life'>('all')
+
+const tabItems = [
+    { label: 'All', value: 'all' },
+    { label: 'Work', value: 'work' },
+    { label: 'Life', value: 'life' }
+]
+
+// Removed selectedTabIndex computed property as we can now v-model directly to viewMode
 let observer: IntersectionObserver | null = null
 
 // Expansion State (managed manually to allow independent toggling)
