@@ -20,26 +20,7 @@
        </div>
         
         <div class="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
-            <div v-if="(status === 'pending' || status === 'idle') && !uploadedLogs" class="flex justify-center py-4">
-                <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary-500" />
-            </div>
-             <div v-else-if="status === 'error' && !uploadedLogs" class="flex flex-col items-center justify-center p-6 space-y-4">
-                <div class="text-center">
-                    <UIcon name="i-heroicons-exclamation-circle" class="w-8 h-8 text-red-500 mb-2 mx-auto" />
-                    <p class="text-sm text-gray-600 dark:text-gray-300 font-medium">Data source missing</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">Upload MyActivity.json to view your history</p>
-                </div>
-                <div class="w-full">
-                     <UFileUpload 
-                        v-model="uploadFile" 
-                        @change="handleFileUpload" 
-                        accept=".json"
-                        icon="i-heroicons-arrow-up-tray"
-                     />
-                </div>
-            </div>
-            
-            <nav v-else class="space-y-1">
+            <nav class="space-y-1">
                 <!-- Calendar -->
                 <div class="px-2 py-2 mb-2 border-b border-gray-100 dark:border-gray-800 flex justify-center">
                     <UCalendar 
