@@ -51,8 +51,21 @@
                 </div>
 
                 <!-- Data Empty State -->
-                <div v-if="!tocStructure.length" class="text-center text-gray-400 text-sm py-8">
-                    No results found
+                <div v-if="!tocStructure.length" class="flex flex-col items-center justify-center py-8 px-4 space-y-4">
+                    <div class="text-center text-gray-400 text-sm">
+                        {{ search ? 'No matching results' : 'No logs found' }}
+                    </div>
+                    
+                    <div v-if="!search" class="w-full">
+                         <UFileUpload 
+                            v-model="uploadFile" 
+                            @change="handleFileUpload" 
+                            accept=".json"
+                            icon="i-heroicons-arrow-up-tray"
+                            class="w-full text-center"
+                         />
+                         <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Upload MyActivity.json</p>
+                    </div>
                 </div>
 
                 <!-- Custom TOC -->
@@ -266,7 +279,7 @@ const handleFileUpload = (e: any) => {
 // Processed logs
 const processedLogs = computed(() => {
   const source = uploadedLogs.value || rawLogs.value
-  if (!source) return []
+  if (!source || !Array.isArray(source)) return []
   return source
     .map((item, index) => {
         const dateObj = item.time ? new Date(item.time) : new Date(0);
