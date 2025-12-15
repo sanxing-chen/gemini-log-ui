@@ -55,17 +55,6 @@
                     <div class="text-center text-gray-400 text-sm">
                         {{ search ? 'No matching results' : 'No logs found' }}
                     </div>
-                    
-                    <div v-if="!search" class="w-full">
-                         <UFileUpload 
-                            v-model="uploadFile" 
-                            @change="handleFileUpload" 
-                            accept=".json"
-                            icon="i-heroicons-arrow-up-tray"
-                            class="w-full text-center"
-                         />
-                         <p class="text-xs text-center text-gray-400 dark:text-gray-500 mt-2">Upload MyActivity.json</p>
-                    </div>
                 </div>
 
                 <!-- Custom TOC -->
@@ -132,8 +121,65 @@
 
       <!-- Main Content -->
       <div class="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden relative">
+        <!-- Global Controls -->
+        <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <UButton
+                to="https://github.com/sanxing-chen/gemini-log-viewer"
+                target="_blank"
+                icon="i-simple-icons-github"
+                color="gray"
+                variant="ghost"
+            />
+            <UColorModeSwitch />
+        </div>
         <div class="flex-1 overflow-y-auto p-0 scroll-smooth" ref="mainScroll">
-             <div v-if="activeDayLogs.length === 0" class="h-full flex flex-col items-center justify-center text-gray-400">
+             <div v-if="processedLogs.length === 0" class="h-full flex flex-col items-center justify-center p-8 overflow-y-auto">
+                 <div class="max-w-2xl w-full space-y-8 bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div class="text-center space-y-2">
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Welcome to Gemini Log Viewer</h2>
+                        <p class="text-gray-500 dark:text-gray-400">Upload your Google Takeout data to get started</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="font-semibold text-gray-900 dark:text-white flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-primary-500"/>
+                                How to get your logs
+                            </div>
+                        </h3>
+                        
+                        <ol class="space-y-3 text-sm text-gray-600 dark:text-gray-400 list-decimal list-outside pl-4">
+                            <li>Go to <a href="https://takeout.google.com/" target="_blank" class="text-primary-500 hover:underline font-medium">Google Takeout</a>.</li>
+                            <li>In "Select data to include", click <strong>Deselect all</strong>.</li>
+                            <li>Find <strong>Gemini</strong> under <strong>My Activity</strong> and check the box.
+                                <UPopover mode="hover" :popper="{ placement: 'bottom-end' }">
+                                    <UButton variant="ghost" color="primary" size="xs">Screenshot</UButton>
+                                    <template #content>
+                                        <div class="p-2 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-100 dark:border-gray-800 max-w-lg">
+                                            <img src="/takeout.jpg" alt="Google Takeout Instructions" class="w-full h-auto rounded" />
+                                        </div>
+                                    </template>
+                            </UPopover>
+                            </li>
+                            <li>Change the format for <strong>Activity records</strong> to <strong>JSON</strong>.</li>
+                            <li>Click <strong>Next step</strong>, then <strong>Create export</strong>.</li>
+                            <li>Download and unzip the file when ready.</li>
+                            <li>Locate <code>Gemini/MyActivity.json</code> in the folder.</li>
+                            <li>Upload the file below.</li>
+                        </ol>
+                    </div>
+
+                    <div class="pt-2">
+                         <UFileUpload 
+                            v-model="uploadFile" 
+                            @change="handleFileUpload" 
+                            accept=".json"
+                            icon="i-heroicons-arrow-up-tray"
+                         />
+                    </div>
+                </div>
+             </div>
+             <div v-else-if="activeDayLogs.length === 0" class="h-full flex flex-col items-center justify-center text-gray-400">
                  <UIcon name="i-heroicons-inbox" class="w-16 h-16 mb-4 opacity-50" />
                  <p>No messages to display</p>
              </div>
@@ -144,7 +190,6 @@
                     <h1 class="text-xl font-bold text-gray-900 dark:text-white">
                         {{ activeDateLabel }}
                     </h1>
-                    <UColorModeSwitch />
                 </div>
 
                  <div v-for="log in activeDayLogs" :key="log.id" :id="log.id" class="px-4 py-6 flex flex-col gap-6" data-log-item>
@@ -189,6 +234,8 @@
       </div>
 
     </UContainer>
+
+
   </div>
 </template>
 
