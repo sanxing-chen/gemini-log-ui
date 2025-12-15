@@ -99,7 +99,7 @@
                                             v-for="log in day.children" 
                                             :key="log.id"
                                             @click="selectLog(log)"
-                                            class="w-full text-left px-2 py-1.5 text-sm rounded-md transition-all duration-200 border-l-2 flex items-center justify-between gap-2 group"
+                                            class="w-full text-left px-2 py-1.5 text-sm rounded-md transition-all duration-200 flex items-center justify-between gap-2 group"
                                             :class="activeLogId === log.id 
                                                 ? 'bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 border-primary-500 font-medium' 
                                                 : 'text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'"
@@ -227,6 +227,8 @@ const tabItems = [
 
 // Removed selectedTabIndex computed property as we can now v-model directly to viewMode
 let observer: IntersectionObserver | null = null
+const isAutoScrolling = ref(false)
+let autoScrollTimeout: any = null
 
 // Expansion State (managed manually to allow independent toggling)
 const expandedYears = ref<Set<string>>(new Set())
@@ -292,7 +294,7 @@ const processedLogs = computed(() => {
             isWork: responseHtml.includes('<code') || 
                    responseHtml.includes('<pre') || 
                    responseHtml.includes('class="code') || 
-                   ['github', 'reviewer', 'qwen', 'reinforcement learning'].some(kw => (responseHtml.toLowerCase().includes(kw) || (item.title || '').toLowerCase().includes(kw))) ||
+                   ['github', 'reviewer', 'qwen', 'reinforcement learning', 'sft'].some(kw => (responseHtml.toLowerCase().includes(kw) || (item.title || '').toLowerCase().includes(kw))) ||
                    ((responseHtml.match(/\$[^$]*\$(?!\d)/g) || []).length * 2 + (item.title?.match(/\$[^$]*\$(?!\d)/g) || []).length * 2) > 5
         }
     })
@@ -331,6 +333,13 @@ const selectLog = (log: LogItem) => {
     if (log.dateKey && log.dateKey !== selectedDateKey.value) {
         selectedDateKey.value = log.dateKey
     }
+    
+    activeLogId.value = log.id
+    isAutoScrolling.value = true
+    if (autoScrollTimeout) clearTimeout(autoScrollTimeout)
+    autoScrollTimeout = setTimeout(() => {
+        isAutoScrolling.value = false
+    }, 1000)
     
     // Wait for render then scroll
     nextTick(() => {
@@ -447,13 +456,15 @@ onMounted(() => {
        if (activeDayLogs.value.length > 0) {
            nextTick(initObserver)
        }
-  })
+  }, { immediate: true })
 })
 
 const initObserver = () => {
     if (observer) observer.disconnect()
     
     observer = new IntersectionObserver((entries) => {
+        if (isAutoScrolling.value) return
+
         // Find visible entries
         const visible = entries.filter(e => e.isIntersecting)
         if (visible.length > 0) {
@@ -479,7 +490,7 @@ const tocStructure = computed(() => {
   // Group logs
   visibleLogs.value.forEach(log => {
       // Filter if search is active
-      if (query && !log.cleanTitle?.toLowerCase()?.includes(query)) {
+      if (query && !log.cleanTitle?.toLowerCase()?.includes(query) && !log.responseHtml?.toLowerCase()?.includes(query)) {
           return
       }
 
