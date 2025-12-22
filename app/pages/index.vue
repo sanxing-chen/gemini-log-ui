@@ -104,6 +104,22 @@
       <div class="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden relative">
         <!-- Global Controls -->
         <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <input 
+                type="file" 
+                ref="fileInput" 
+                class="hidden" 
+                @change="handleFileUpload" 
+                accept=".json" 
+                multiple 
+            />
+            <UButton
+                v-if="processedLogs.length > 0"
+                @click="triggerFileInput"
+                icon="i-heroicons-plus"
+                color="primary"
+                variant="soft"
+                label="Add Logs"
+            />
             <UButton
                 to="https://github.com/sanxing-chen/gemini-log-viewer"
                 target="_blank"
@@ -245,20 +261,15 @@ interface LogItem {
   isWork?: boolean
 }
 
-// Fetch the data
-const { data: rawLogs, status, error } = await useFetch<LogItem[]>('/MyActivity.json', {
-  server: false,
-  lazy: true
-})
-
 // State
 const search = ref('')
 const activeLogId = ref<string | null>(null)
 const selectedDateKey = ref<string | null>(null)
 const mainScroll = ref<HTMLElement | null>(null)
 const uploadFile = ref<File | null>(null)
-const uploadedLogs = ref<LogItem[] | null>(null)
+const allLogs = ref<LogItem[]>([])
 const viewMode = ref<'all' | 'work' | 'life'>('life')
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const tabItems = [
     { label: 'Life', value: 'life' },
@@ -275,52 +286,147 @@ let autoScrollTimeout: any = null
 const expandedYears = ref<Set<string>>(new Set())
 const expandedMonths = ref<Set<string>>(new Set())
 
-const handleFileUpload = (e: any) => {
-    // Determine the file to read
-    let file: File | null = null
-    if (uploadFile.value) {
-        file = uploadFile.value
-    } else if (e?.target?.files?.[0]) {
-        file = e.target.files[0]
-    }
-    
-    if (!file) return
+const formatGrokResponse = (text: string): string => {
+    if (!text) return ''
+    let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\n/g, "<br>")
+    return html
+}
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-        try {
-            const content = event.target?.result as string
-            const parsed = JSON.parse(content)
-            if (Array.isArray(parsed)) {
-                uploadedLogs.value = parsed
-            } else {
-                alert('Invalid JSON format: Expected an array')
+const createLogItemFromGrok = (conv: any, humanRes: any, modelRes: any): LogItem => {
+    const timeStr = humanRes.create_time?.$date?.$numberLong 
+    const timestamp = timeStr ? parseInt(timeStr) : 0
+    const date = new Date(timestamp)
+    const isoTime = date.toISOString()
+    
+    let responseHtml = ''
+    if (modelRes && modelRes.message) {
+        responseHtml = formatGrokResponse(modelRes.message)
+    }
+
+    return {
+        id: humanRes._id || (Math.random().toString(36).substring(7)),
+        header: 'Grok',
+        title: humanRes.message,
+        time: isoTime,
+        products: ['Grok'],
+        activityControls: [],
+        responseHtml: responseHtml,
+        cleanTitle: humanRes.message
+    }
+}
+
+const parseGrokData = (data: any): LogItem[] => {
+    if (!data.conversations || !Array.isArray(data.conversations)) return []
+    
+    const logs: LogItem[] = []
+    
+    data.conversations.forEach((convWrapper: any) => {
+        const conv = convWrapper.conversation
+        const responses = convWrapper.responses
+        
+        if (!responses || !Array.isArray(responses)) return
+
+        let currentHumanMessage: any = null
+        
+        responses.forEach((resWrapper: any) => {
+            const res = resWrapper.response
+            if (!res) return
+
+            if (res.sender === 'human') {
+                if (currentHumanMessage) {
+                    logs.push(createLogItemFromGrok(conv, currentHumanMessage, null))
+                }
+                currentHumanMessage = res
+            } else if (res.sender === 'assistant' || res.sender === 'model') {
+                if (currentHumanMessage) {
+                     logs.push(createLogItemFromGrok(conv, currentHumanMessage, res))
+                     currentHumanMessage = null
+                }
             }
-        } catch (err) {
-            console.error('Error parsing JSON:', err)
-            alert('Error parsing JSON file')
+        })
+        
+        if (currentHumanMessage) {
+            logs.push(createLogItemFromGrok(conv, currentHumanMessage, null))
+        }
+    })
+    
+    return logs
+}
+
+const handleFileUpload = (e: any) => {
+    // Determine the file(s) to read
+    const files: File[] = []
+    
+    if (uploadFile.value) {
+        files.push(uploadFile.value)
+        // Reset the model so it can be used again not strictly necessary but cleaner
+        uploadFile.value = null
+    } else if (e?.target?.files) {
+        for (let i = 0; i < e.target.files.length; i++) {
+            files.push(e.target.files[i])
         }
     }
-    reader.readAsText(file)
+    
+    if (files.length === 0) return
+
+    files.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            try {
+                const content = event.target?.result as string
+                const parsed = JSON.parse(content)
+                let newItems: LogItem[] = []
+
+                if (Array.isArray(parsed)) {
+                    newItems = parsed
+                } else if (parsed.conversations) {
+                    newItems = parseGrokData(parsed)
+                } else {
+                    alert(`Invalid JSON format in file: ${file.name}`)
+                    return
+                }
+                
+                // Append new logs
+                allLogs.value = [...allLogs.value, ...newItems]
+                
+            } catch (err) {
+                console.error(`Error parsing JSON from ${file.name}:`, err)
+                alert(`Error parsing JSON file: ${file.name}`)
+            }
+        }
+        reader.readAsText(file)
+    })
+    
+    // Reset file input if used
+    if (e?.target) {
+        e.target.value = ''
+    }
+}
+
+const triggerFileInput = () => {
+    fileInput.value?.click()
 }
 
 // Processed logs
 const processedLogs = computed(() => {
-  const source = uploadedLogs.value || rawLogs.value
-  if (!source || !Array.isArray(source)) return []
-  return source
+  return allLogs.value
     .map((item, index) => {
         const dateObj = item.time ? new Date(item.time) : new Date(0);
         const yyyy = dateObj.getFullYear();
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         
-        const responseHtml = item.safeHtmlItem?.[0]?.html || '';
+        const responseHtml = item.responseHtml || item.safeHtmlItem?.[0]?.html || '';
 
         return {
             ...item,
-            id: `log-${index}`,
-            cleanTitle: item.title ? item.title.replace(/^Prompted\s*/, '') : 'No Title',
+            id: item.id || `log-${index}`,
+            cleanTitle: item.cleanTitle || (item.title ? item.title.replace(/^Prompted\s*/, '') : 'No Title'),
             formattedTime: item.time ? dateObj.toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'short',
@@ -566,7 +672,7 @@ const tocStructure = computed(() => {
           const childrenDays = Object.keys(groups[year]?.[month] || {})
             .sort((a,b) => parseInt(b) - parseInt(a))
             .map(day => {
-                const dayLogs = groups[year]![month][day]!
+                const dayLogs = groups[year]?.[month]?.[day] || []
                 return {
                     label: `Day ${day}`,
                     dateKey: dayLogs[0]?.dateKey,
